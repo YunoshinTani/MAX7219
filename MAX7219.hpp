@@ -33,11 +33,11 @@ public:
 
     void drawDigit(uint8_t data[8]);
 
-    void drawText(uint8_t data[][8], uint32_t wait_ms = 300);
+    void drawText(uint8_t data[][8], uint32_t data_length, uint32_t wait_ms = 300);
 
     void drawText(const char *text, uint32_t wait_ms = 300);
 
-    void slide();
+    void slideText(const char *text, uint32_t wait_ms = 100);
 
 private:
     static uint8_t FONT8x8[97][8];
