@@ -42,7 +42,8 @@ public:
     void slideText(const char *text, uint32_t wait_ms = 100);
 
 private:
-    static uint8_t FONT8x8[97][8];
+    static uint8_t EnFONT8x8[97][8];
+    static uint8_t JpFONT8x8[168][8];
 
     SPI _spi;
     DigitalOut _cs;

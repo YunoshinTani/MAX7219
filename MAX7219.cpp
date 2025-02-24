@@ -50,7 +50,7 @@ void dotMatrix::drawDigit(uint8_t data[8])
 void dotMatrix::drawChar(char char_data)
 {
     for (int i=0; i<8; i++) {
-        drawDigit(dotMatrix::FONT8x8[char_data - 32]);
+        drawDigit(dotMatrix::EnFONT8x8[char_data - 32]);
     }
 }
 
@@ -81,7 +81,7 @@ void dotMatrix::slideText(const char *text, uint32_t wait_ms)
 
     while (*text && word<(1024-2)) {
         for (uint8_t i=0; i<8; i++) {
-            data[word][i] = dotMatrix::FONT8x8[*text - 32][i];
+            data[word][i] = dotMatrix::EnFONT8x8[*text - 32][i];
         }
         word++;
         *text++;
