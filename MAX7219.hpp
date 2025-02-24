@@ -27,9 +27,11 @@ public:
 
     void send(uint8_t reg, uint8_t data);
 
-    void init();
+    void setting(uint8_t intensity = 0x0F, uint8_t scan_limit = 0x07, uint8_t decode_mode = 0x00, uint8_t shutdown = 0x01);
 
     void clear();
+
+    void test();
 
     void drawDigit(uint8_t data[8]);
 

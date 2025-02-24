@@ -2,25 +2,13 @@
 
 dotMatrix::dotMatrix(PinName din_pin, PinName clk_pin, PinName cs_pin) : _spi(din_pin, NC, clk_pin), _cs(cs_pin)
 {
-    init();
-    ThisThread::sleep_for(100ms);
-
-    clear();
-    ThisThread::sleep_for(100ms);
-}
-
-void dotMatrix::init()
-{
     // SPI設定
     _spi.format(16, 0); // 8ビットデータ, モード0
     _spi.frequency(1e7); // SPIクロック周波数 10MHz
 
-    // MAX7219初期化
-    send(REG_SHUTDOWN, 0x01);    // 通常動作モード
-    send(REG_DECODE_MODE, 0x00); // デコードモード無効
-    send(REG_INTENSITY, 0x0F);   // 輝度設定 (0x00〜0x0F)
-    send(REG_SCAN_LIMIT, 0x07);  // 8桁全表示
+    setting();
     send(REG_DISPLAY_TEST, 0x00); // 通常動作モード
+    clear();
 }
 
 // MAX7219にデータを送信
@@ -31,11 +19,25 @@ void dotMatrix::send(uint8_t reg, uint8_t data)
     _cs = 1; // チップセレクト無効
 }
 
+void dotMatrix::setting(uint8_t intensity, uint8_t scan_limit, uint8_t decode_mode, uint8_t shutdown)
+{
+    // MAX7219の設定
+    send(REG_SHUTDOWN, shutdown);    // 通常動作モード
+    send(REG_DECODE_MODE, decode_mode); // デコードモード無効
+    send(REG_INTENSITY, intensity);   // 輝度設定 (0x00〜0x0F)
+    send(REG_SCAN_LIMIT, scan_limit);  // 8桁全表示
+}
+
 void dotMatrix::clear()
 {
     for (int i=0; i<8; i++) {
         send(i+1, 0x00);
     }
+}
+
+void dotMatrix::test()
+{
+    send(REG_DISPLAY_TEST, 0x01); // テストモード
 }
 
 void dotMatrix::drawDigit(uint8_t data[8])
