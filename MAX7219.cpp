@@ -1,107 +1,158 @@
 #include "MAX7219.hpp"
 
-dotMatrix::dotMatrix(PinName din_pin, PinName clk_pin, PinName cs_pin) : _spi(din_pin, NC, clk_pin), _cs(cs_pin)
-{
+dotMatrix::dotMatrix(PinName din_pin, PinName clk_pin, PinName cs_pin, uint8_t numDevices) : _spi(din_pin, NC, clk_pin), _cs(cs_pin) {
+    _numDevices = numDevices;
     // SPI設定
     _spi.format(16, 0); // 8ビットデータ, モード0
     _spi.frequency(1e7); // SPIクロック周波数 10MHz
 
     setting();
-    send(REG_DISPLAY_TEST, 0x00); // 通常動作モード
+    send(REG_DISPLAY_TEST, 0x00, 0); // 通常動作モード
     clear();
 }
 
 // MAX7219にデータを送信
-void dotMatrix::send(uint8_t reg, uint8_t data)
-{
+void dotMatrix::send(uint8_t reg, uint8_t data, uint8_t targetIndex) {
     _cs = 0; // チップセレクト有効
-    _spi.write((reg << 8) | (data));   // レジスタアドレス送信
+    if (targetIndex == 0) {
+        for (uint8_t i=0; i<_numDevices; i++) {
+            _spi.write((reg << 8) | (data));   // 目的のデバイスにデータ送信
+        }
+    } else {
+        for (uint8_t i=1; i<=_numDevices; i++) {
+            if (i == targetIndex) {
+                _spi.write((reg << 8) | (data));   // 目的のデバイスにデータ送信
+            } else {
+                _spi.write(0x0000);  // 他のデバイスにはダミーデータを送信
+            }
+        }
+    }
     _cs = 1; // チップセレクト無効
 }
 
-void dotMatrix::setting(uint8_t intensity, uint8_t scan_limit, uint8_t decode_mode, uint8_t shutdown)
-{
+void dotMatrix::setting(uint8_t intensity, uint8_t scan_limit, uint8_t decode_mode, uint8_t shutdown, uint8_t targetIndex){
     // MAX7219の設定
-    send(REG_SHUTDOWN, shutdown);    // 通常動作モード
-    send(REG_DECODE_MODE, decode_mode); // デコードモード無効
-    send(REG_INTENSITY, intensity);   // 輝度設定 (0x00〜0x0F)
-    send(REG_SCAN_LIMIT, scan_limit);  // 8桁全表示
+    send(REG_SHUTDOWN, shutdown, targetIndex);    // 通常動作モード
+    send(REG_DECODE_MODE, decode_mode, targetIndex); // デコードモード無効
+    send(REG_INTENSITY, intensity, targetIndex);   // 輝度設定 (0x00〜0x0F)
+    send(REG_SCAN_LIMIT, scan_limit, targetIndex);  // 8桁全表示
 }
 
-void dotMatrix::clear()
-{
-    for (int i=0; i<8; i++) {
-        send(i+1, 0x00);
+void dotMatrix::fill(uint8_t targetIndex) {
+    for (uint8_t i=0; i<8; i++) {
+        send(i+1, 0xFF, targetIndex);
+    }
+}
+void dotMatrix::clear(uint8_t targetIndex) {
+    for (uint8_t i=0; i<8; i++) {
+        send(i+1, 0x00, targetIndex);
     }
 }
 
-void dotMatrix::test()
+void dotMatrix::test(uint8_t targetIndex)
 {
-    send(REG_DISPLAY_TEST, 0x01); // テストモード
+    send(REG_DISPLAY_TEST, 0x01, targetIndex); // テストモード
 }
 
-void dotMatrix::drawDigit(uint8_t data[8])
+void dotMatrix::drawDigit(uint8_t data[8], uint8_t targetIndex)
 {
     for (int i=0; i<8; i++) {
-        send(i+1, data[i]);
+        send(i+1, data[i], targetIndex);
     }
 }
 
-void dotMatrix::drawChar(char char_data)
+void dotMatrix::drawChar(char char_data, uint8_t targetIndex)
 {
     for (int i=0; i<8; i++) {
-        drawDigit(dotMatrix::EnFONT8x8[char_data - 32]);
+        drawDigit(dotMatrix::EnFONT8x8[char_data - 32], targetIndex);
     }
 }
 
-void dotMatrix::drawText(uint8_t data[][8], uint32_t data_length, uint32_t wait_ms)
+void dotMatrix::drawText(uint8_t data[][8], uint32_t data_length, uint8_t targetIndex, uint32_t wait_ms)
 {
     for (uint32_t i=0; i<data_length; i++) {
-        drawDigit(data[i]);
+        drawDigit(data[i], targetIndex);
         ThisThread::sleep_for(chrono::milliseconds(wait_ms));
     }
 }
 
-void dotMatrix::drawText(const char *text, uint32_t wait_ms)
+void dotMatrix::drawText(const char *text, uint8_t targetIndex, uint32_t wait_ms)
 {
     while (*text) {
-        drawChar(*text++);
+        drawChar(*text++, targetIndex);
         ThisThread::sleep_for(chrono::milliseconds(wait_ms));
     }
 }
 
-void dotMatrix::slideText(const char *text, uint32_t wait_ms)
-{
-    uint8_t (*data)[8] = new uint8_t[1024][8]; // ヒープに確保
-    uint32_t word = 1;
+void dotMatrix::slideText(const char*text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
+    uint8_t numEnableDevices = endIndex - startIndex + 1;
+    uint32_t numWord = 0;
+    uint8_t (*data)[8] = new uint8_t[1024][8];
 
-    for (uint8_t i=0; i<8; i++) {
-        data[word-1][i] = 0x00;
-    }
-
-    while (*text && word<(1024-2)) {
-        for (uint8_t i=0; i<8; i++) {
-            data[word][i] = dotMatrix::EnFONT8x8[*text - 32][i];
+    for (uint8_t i0=0; i0<numEnableDevices; i0++) {
+        for (uint8_t i1=0; i1<8; i1++) {
+            data[i0][i1] = 0x00;
         }
-        word++;
-        *text++;
+    }
+    numWord += numEnableDevices;
+
+    while (*text && numWord<(1024-(2*numEnableDevices))) {
+        for (uint8_t i=0; i<8; i++) {
+            data[numWord][i] = dotMatrix::EnFONT8x8[*text - 32][i];
+        }
+        numWord++;
+        text++;
+    }
+
+    for (uint8_t i0=0; i0<numEnableDevices; i0++) {
+        for (uint8_t i1=0; i1<8; i1++) {
+            data[numWord+i0][i1] = 0x00;
+        }
+    }
+    numWord += numEnableDevices;
+
+    for (uint32_t word=0; word<(numWord-numEnableDevices); word++) {
+        for (uint8_t step=0; step<8; step++) {
+            for (int8_t digit=7; digit>=0; digit--) {
+                for (uint8_t index=0; index<numEnableDevices; index++) {
+                    send(digit, (step==0) ? (data[word+index][digit] << step) & 0xFF : (((data[word+index][digit] << step) & 0xFF) | ((data[word+index+1][digit] >> (8-step)) & 0xFF)), startIndex + index);
+                }
+            }
+            ThisThread::sleep_for(chrono::milliseconds(wait_ms));
+        }
+    }
+
+    delete[] data;
+}
+
+void dotMatrix::slideTextUp(const char *text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
+    uint8_t numEnableDevices = endIndex - startIndex + 1;
+    uint8_t (*data)[8] = new uint8_t[1024][8]; // ヒープに確保
+    uint32_t numWord = 1;
+
+    for (uint8_t i=0; i<8; i++) {
+        data[0][i] = 0x00;
+    }
+
+    while (*text && numWord<(1024-2)) {
+        for (uint8_t i=0; i<8; i++) {
+            data[numWord][i] = dotMatrix::EnUpFONT8x8[*text - 32][i];
+        }
+        numWord++;
+        text++;
     }
 
     for (uint8_t i=0; i<8; i++) {
-        data[word][i] = 0x00;
+        data[numWord][i] = 0x00;
     }
 
-    for (uint32_t i=0; i<word; i++) {
-        for (uint8_t j=0; j<8; j++) {
-            printf("i : %ld   j : %d\n", i, j);
-            send(1, data[(j+0 < 8) ? i : i+1][(j+0 < 8) ? j+0 : j-8]);
-            send(2, data[(j+1 < 8) ? i : i+1][(j+1 < 8) ? j+1 : j-7]);
-            send(3, data[(j+2 < 8) ? i : i+1][(j+2 < 8) ? j+2 : j-6]);
-            send(4, data[(j+3 < 8) ? i : i+1][(j+3 < 8) ? j+3 : j-5]);
-            send(5, data[(j+4 < 8) ? i : i+1][(j+4 < 8) ? j+4 : j-4]);
-            send(6, data[(j+5 < 8) ? i : i+1][(j+5 < 8) ? j+5 : j-3]);
-            send(7, data[(j+6 < 8) ? i : i+1][(j+6 < 8) ? j+6 : j-2]);
-            send(8, data[(j+7 < 8) ? i : i+1][(j+7 < 8) ? j+7 : j-1]);
+    for (uint32_t word=0; word<(numWord); word++) {
+        for (uint8_t step=0; step<8; step++) {
+            for (uint8_t digit=0; digit<8; digit++) {
+                for (uint8_t index=0; index<numEnableDevices; index++) {
+                    send(digit+1, data[(word+digit < 8) ? word : word+1][(word+digit < 8) ? step+digit : step-(8-digit)], startIndex + index);
+                }
+            }
             ThisThread::sleep_for(chrono::milliseconds(wait_ms));
         }
     }

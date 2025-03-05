@@ -23,32 +23,38 @@
 class dotMatrix
 {
 public:
-    dotMatrix(PinName din_pin, PinName clk_pin, PinName cs_pin);
+    dotMatrix(PinName din_pin, PinName clk_pin, PinName cs_pin, uint8_t numDevices);
 
-    void send(uint8_t reg, uint8_t data);
+    void send(uint8_t reg, uint8_t data, uint8_t targetIndex = 0);
 
-    void setting(uint8_t intensity = 0x0F, uint8_t scan_limit = 0x07, uint8_t decode_mode = 0x00, uint8_t shutdown = 0x01);
+    void setting(uint8_t intensity = 0x0F, uint8_t scan_limit = 0x07, uint8_t decode_mode = 0x00, uint8_t shutdown = 0x01, uint8_t targetIndex = 0);
 
-    void clear();
+    void fill(uint8_t targetIndex = 0);
 
-    void test();
+    void clear(uint8_t targetIndex = 0);
 
-    void drawDigit(uint8_t data[8]);
+    void test(uint8_t targetIndex = 0);
 
-    void drawText(uint8_t data[][8], uint32_t data_length, uint32_t wait_ms = 300);
+    void drawDigit(uint8_t data[8], uint8_t targetIndex = 0);
 
-    void drawText(const char *text, uint32_t wait_ms = 300);
+    void drawText(uint8_t data[][8], uint32_t data_length, uint8_t targetIndex = 0, uint32_t wait_ms = 300);
 
-    void slideText(const char *text, uint32_t wait_ms = 100);
+    void drawText(const char *text, uint8_t targetIndex = 0, uint32_t wait_ms = 300);
+
+    void slideText(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
+
+    void slideTextUp(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
 
 private:
+    static uint8_t EnUpFONT8x8[97][8];
     static uint8_t EnFONT8x8[97][8];
     static uint8_t JpFONT8x8[168][8];
 
     SPI _spi;
     DigitalOut _cs;
+    uint8_t _numDevices;
 
-    void drawChar(char char_data);
+    void drawChar(char char_data, uint8_t targetIndex = 0);
 };
 
 #endif // MAX7219_H
