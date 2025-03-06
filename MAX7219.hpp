@@ -41,20 +41,23 @@ public:
 
     void drawText(const char *text, uint8_t targetIndex = 0, uint32_t wait_ms = 300);
 
-    void slideText(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
+    void slideRightText(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
 
-    void slideTextUp(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
+    void slideLeftText(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
 
+    void slideUpText(const char *text, uint8_t startIndex = 1, uint8_t endIndex = 4, uint32_t wait_ms = 50);
+
+    void drawChar(char char_data, uint8_t targetIndex = 0);
 private:
+    static uint8_t EnRightFONT8x8[97][8];
+    static uint8_t EnLeftFONT8x8[97][8];
     static uint8_t EnUpFONT8x8[97][8];
-    static uint8_t EnFONT8x8[97][8];
     static uint8_t JpFONT8x8[168][8];
 
     SPI _spi;
     DigitalOut _cs;
     uint8_t _numDevices;
 
-    void drawChar(char char_data, uint8_t targetIndex = 0);
 };
 
 #endif // MAX7219_H

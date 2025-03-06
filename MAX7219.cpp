@@ -64,7 +64,7 @@ void dotMatrix::drawDigit(uint8_t data[8], uint8_t targetIndex)
 void dotMatrix::drawChar(char char_data, uint8_t targetIndex)
 {
     for (int i=0; i<8; i++) {
-        drawDigit(dotMatrix::EnFONT8x8[char_data - 32], targetIndex);
+        drawDigit(dotMatrix::EnRightFONT8x8[char_data - 32], targetIndex);
     }
 }
 
@@ -84,7 +84,7 @@ void dotMatrix::drawText(const char *text, uint8_t targetIndex, uint32_t wait_ms
     }
 }
 
-void dotMatrix::slideText(const char*text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
+void dotMatrix::slideLeftText(const char*text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
     uint8_t numEnableDevices = endIndex - startIndex + 1;
     uint32_t numWord = 0;
     uint8_t (*data)[8] = new uint8_t[1024][8];
@@ -98,7 +98,7 @@ void dotMatrix::slideText(const char*text, uint8_t startIndex, uint8_t endIndex,
 
     while (*text && numWord<(1024-(2*numEnableDevices))) {
         for (uint8_t i=0; i<8; i++) {
-            data[numWord][i] = dotMatrix::EnFONT8x8[*text - 32][i];
+            data[numWord][i] = dotMatrix::EnLeftFONT8x8[*text - 32][i];
         }
         numWord++;
         text++;
@@ -127,7 +127,50 @@ void dotMatrix::slideText(const char*text, uint8_t startIndex, uint8_t endIndex,
     delete[] data;
 }
 
-void dotMatrix::slideTextUp(const char *text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
+void dotMatrix::slideRightText(const char*text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
+    uint8_t numEnableDevices = endIndex - startIndex + 1;
+    uint32_t numWord = 0;
+    uint8_t (*data)[8] = new uint8_t[1024][8];
+
+    for (uint8_t i0=0; i0<numEnableDevices; i0++) {
+        for (uint8_t i1=0; i1<8; i1++) {
+            data[i0][i1] = 0x00;
+        }
+    }
+    numWord += numEnableDevices;
+
+    while (*text && numWord<(1024-(2*numEnableDevices))) {
+        for (uint8_t i=0; i<8; i++) {
+            data[numWord][i] = dotMatrix::EnRightFONT8x8[*text - 32][i];
+        }
+        numWord++;
+        text++;
+    }
+
+    for (uint8_t i0=0; i0<numEnableDevices; i0++) {
+        for (uint8_t i1=0; i1<8; i1++) {
+            data[numWord+i0][i1] = 0x00;
+        }
+    }
+    numWord += numEnableDevices;
+
+    for (uint32_t word=numEnableDevices-1; word<(numWord-1); word++) {
+        for (uint8_t step=0; step<8; step++) {
+            for (uint8_t digit=0; digit<8; digit++) {
+                for (int8_t index=numEnableDevices; index>=0; index--) {
+                    send(digit+1, (step==0) ? (data[word-index][digit] >> step) & 0xFF : (((data[word-index][digit] >> step) & 0xFF) | ((data[word-index+1][digit] << (8-step)) & 0xFF)), startIndex + index);
+                }
+            }
+            ThisThread::sleep_for(chrono::milliseconds(wait_ms));
+        }
+    }
+
+    clear(0);
+
+    delete[] data;
+}
+
+void dotMatrix::slideUpText(const char *text, uint8_t startIndex, uint8_t endIndex, uint32_t wait_ms) {
     uint8_t numEnableDevices = endIndex - startIndex + 1;
     uint8_t (*data)[8] = new uint8_t[1024][8]; // ヒープに確保
     uint32_t numWord = 1;
