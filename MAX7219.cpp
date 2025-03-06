@@ -113,14 +113,16 @@ void dotMatrix::slideText(const char*text, uint8_t startIndex, uint8_t endIndex,
 
     for (uint32_t word=0; word<(numWord-numEnableDevices); word++) {
         for (uint8_t step=0; step<8; step++) {
-            for (int8_t digit=7; digit>=0; digit--) {
+            for (uint8_t digit=0; digit<8; digit++) {
                 for (uint8_t index=0; index<numEnableDevices; index++) {
-                    send(digit, (step==0) ? (data[word+index][digit] << step) & 0xFF : (((data[word+index][digit] << step) & 0xFF) | ((data[word+index+1][digit] >> (8-step)) & 0xFF)), startIndex + index);
+                    send(digit+1, (step==0) ? (data[word+index][digit] << step) & 0xFF : (((data[word+index][digit] << step) & 0xFF) | ((data[word+index+1][digit] >> (8-step)) & 0xFF)), startIndex + index);
                 }
             }
             ThisThread::sleep_for(chrono::milliseconds(wait_ms));
         }
     }
+
+    clear(0);
 
     delete[] data;
 }
@@ -156,6 +158,8 @@ void dotMatrix::slideTextUp(const char *text, uint8_t startIndex, uint8_t endInd
             ThisThread::sleep_for(chrono::milliseconds(wait_ms));
         }
     }
+
+    clear(0);
 
     delete[] data;
 }
